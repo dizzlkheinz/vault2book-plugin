@@ -360,6 +360,48 @@ async function extractContent(
 	}
 }
 
+async function collectReferences(
+	app: App,
+	sourceFile: TFile,
+	settings: Obsidian2BookSettings
+): Promise<Reference[]> {
+	const cache = app.metadataCache.getFileCache(sourceFile);
+	const links = cache?.links || [];
+	const references: Reference[] = [];
+
+	for (let i = 0; i < links.length; i++) {
+		const link = links[i];
+		if (!link) continue;
+
+		const parsed = parseLink(link);
+
+		// Resolve target file
+		const targetFile = app.metadataCache.getFirstLinkpathDest(
+			parsed.targetFile,
+			sourceFile.path
+		);
+
+		if (!targetFile || !(targetFile instanceof TFile)) continue;
+
+		// Apply ignore filters
+		const isValid = await checkFile(app, targetFile, settings);
+		if (!isValid) continue;
+
+		// Extract content
+		const content = await extractContent(app, parsed, sourceFile.path);
+		if (!content || content.trim() === '') continue;
+
+		references.push({
+			id: `ref-${i + 1}`,
+			parsedLink: parsed,
+			content,
+			sourceHeading: sourceFile.basename
+		});
+	}
+
+	return references;
+}
+
 function visitFolder(
 	settings: Obsidian2BookSettings,
 	fileStr: TAbstractFile,
