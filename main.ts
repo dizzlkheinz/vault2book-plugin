@@ -46,8 +46,8 @@ const DEFAULT_SETTINGS: Obsidian2BookSettings = {
 };
 
 export default class Obsidian2BookClass extends Plugin {
-	settings: Obsidian2BookSettings;
-	ribbonButton: HTMLElement;
+	settings!: Obsidian2BookSettings;
+	ribbonButton!: HTMLElement;
 
 	async onload() {
 		await this.loadSettings();
@@ -55,7 +55,7 @@ export default class Obsidian2BookClass extends Plugin {
 		this.ribbonButton = this.addRibbonIcon(
 			"book",
 			"Obsidian 2 Book: Generate a book from a specified folder",
-			(evt: MouseEvent) => {
+			() => {
 				new PathFuzzy(this, generateBook).open();
 			}
 		);
@@ -81,11 +81,11 @@ export default class Obsidian2BookClass extends Plugin {
 			name: "Remove all generated books from vault",
 			callback: () => {
 				new ConfirmModal(
-					app,
+					this.app,
 					"Remove all books?",
 					`You are about to delete every book you have created in you vault, procede?
 					WARNING: All files containing the following comment: <!--book-ignore--> will be deleted`,
-					() => removeAllBooks(app),
+					() => removeAllBooks(this.app),
 					() => {}
 				).open();
 			},
@@ -109,11 +109,10 @@ export default class Obsidian2BookClass extends Plugin {
 	}
 }
 
-async function removeAllBooks(app: App) {
+async function removeAllBooks(app: App): Promise<void> {
 	const { vault } = app;
 	const books = vault.getFiles();
-	for (let i = 0; i < books.length; i++) {
-		const file = books[i];
+	for (const file of books) {
 		const fileContent = await vault.read(file);
 		if (isBook(fileContent)) {
 			await vault.delete(file);
@@ -197,7 +196,6 @@ async function checkFile(
 }
 
 function checkFolder(
-	app: App,
 	file: TFolder,
 	settings: Obsidian2BookSettings
 ): boolean {
@@ -282,18 +280,26 @@ function visitFolder(
 
 		for (let i = 0; i < allChild.length; i++) {
 			const child = allChild[i];
-			if (
-				(child instanceof TFolder &&
-					!checkFolder(app, child, settings)) ||
-				(child instanceof TFile && !checkFile(app, child, settings))
-			)
+			if (!child) continue;
+
+			// Skip files when onlyFolders is true
+			if (onlyFolders && child instanceof TFile) {
 				continue;
+			}
+			// Skip folders that should be ignored
+			if (child instanceof TFolder && !checkFolder(child, settings)) {
+				continue;
+			}
+			// Note: File filtering via checkFile() is handled in generateBook()
+			// where it can be properly awaited. We skip it here since checkFile is async
+			// and this function is called in synchronous contexts (e.g., PathFuzzy.getItems)
 			visitFolder(settings, child, app, onlyFolders, depth + 1);
 		}
 	}
 }
 
 async function getTableOfContent(
+	app: App,
 	currPath: string,
 	currDepth: number,
 	fileList: fileStruct[],
@@ -303,11 +309,9 @@ async function getTableOfContent(
 		(file) => file.depth === currDepth + 1 && file.path.includes(currPath)
 	);
 	let toc = "";
-	for (let i = 0; i < tocArray.length; i++) {
-		const file = tocArray[i];
+	for (const file of tocArray) {
 		if (file.type === "folder") {
-			const isFolderValid = await checkFolder(
-				app,
+			const isFolderValid = checkFolder(
 				file.document as TFolder,
 				{ ...settings }
 			);
@@ -364,8 +368,10 @@ async function generateBook(
 
 	for (let i = 0; i < documents.length; i++) {
 		const file = documents[i];
+		if (!file) continue;
+
 		if (file.type === "folder") {
-			const isFolderValid = checkFolder(app, file.document as TFolder, {
+			const isFolderValid = checkFolder(file.document as TFolder, {
 				...settings,
 			});
 			if (!isFolderValid) continue;
@@ -377,6 +383,7 @@ async function generateBook(
 			if (!isFileValid) continue;
 		}
 		const currToc = await getTableOfContent(
+			app,
 			file.path,
 			file.depth,
 			documents,
@@ -430,7 +437,7 @@ async function generateBook(
 			app.workspace.getLeaf().openFile(fileCreated);
 		}
 	} catch (e) {
-		new Notice(e.toString());
+		new Notice(e instanceof Error ? e.message : String(e));
 	}
 
 	return Promise.resolve(true);
@@ -495,7 +502,7 @@ export class PathFuzzy extends FuzzySuggestModal<fileStruct> {
 		visitFolder(
 			this.plugin.settings,
 			this.app.vault.getRoot(),
-			super.app,
+			this.app,
 			true
 		);
 		const files = [...fileList];
@@ -507,7 +514,7 @@ export class PathFuzzy extends FuzzySuggestModal<fileStruct> {
 		return folder.path;
 	}
 
-	onChooseItem(folder: fileStruct, evt: MouseEvent | KeyboardEvent) {
+	onChooseItem(folder: fileStruct) {
 		new Notice(`Selected ${folder.path}`);
 		const depthOffset =
 			folder.path.split("").filter((x) => x == "/").length - 1;
@@ -603,6 +610,7 @@ class Obsidian2BookSettingsPage extends PluginSettingTab {
 
 		for (let i = 0; i < this.plugin.settings.filesToIgnore.length; i++) {
 			const element = this.plugin.settings.filesToIgnore[i];
+			if (element === undefined) continue;
 			new Setting(containerEl)
 				.setName("File to ignore " + i)
 				.setDesc("Set file name to ignore")
@@ -641,6 +649,7 @@ class Obsidian2BookSettingsPage extends PluginSettingTab {
 			i++
 		) {
 			const element = this.plugin.settings.extensionsToIgnore[i];
+			if (element === undefined) continue;
 			new Setting(containerEl)
 				.setName("Extension to ignore " + i)
 				.setDesc("Set exntesion to ignore")
@@ -675,6 +684,7 @@ class Obsidian2BookSettingsPage extends PluginSettingTab {
 
 		for (let i = 0; i < this.plugin.settings.foldersToIgnore.length; i++) {
 			const element = this.plugin.settings.foldersToIgnore[i];
+			if (element === undefined) continue;
 			new Setting(containerEl)
 				.setName("Folder to ignore " + i)
 				.setDesc("Set folder name to ignore")
@@ -709,6 +719,7 @@ class Obsidian2BookSettingsPage extends PluginSettingTab {
 
 		for (let i = 0; i < this.plugin.settings.tagsToIgnore.length; i++) {
 			const element = this.plugin.settings.tagsToIgnore[i];
+			if (element === undefined) continue;
 			new Setting(containerEl)
 				.setName("Tag to ignore " + i)
 				.setDesc("Set tag to ignore")
