@@ -326,6 +326,40 @@ function extractBlock(content: string, blockId: string): string {
 	return '';
 }
 
+async function extractContent(
+	app: App,
+	parsedLink: ParsedLink,
+	sourcePath: string
+): Promise<string> {
+	// Resolve target file path using Obsidian's resolver
+	const targetFile = app.metadataCache.getFirstLinkpathDest(
+		parsedLink.targetFile,
+		sourcePath
+	);
+
+	if (!targetFile || !(targetFile instanceof TFile)) {
+		return '';
+	}
+
+	const content = await app.vault.read(targetFile);
+
+	switch (parsedLink.linkType) {
+		case 'file':
+			return content;
+
+		case 'heading':
+			if (!parsedLink.selector) return '';
+			return extractHeadingSection(content, parsedLink.selector);
+
+		case 'block':
+			if (!parsedLink.selector) return '';
+			return extractBlock(content, parsedLink.selector);
+
+		default:
+			return '';
+	}
+}
+
 function visitFolder(
 	settings: Obsidian2BookSettings,
 	fileStr: TAbstractFile,
