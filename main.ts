@@ -226,6 +226,43 @@ function checkFolder(
 	return !isFolderIgnore && !isEmpty;
 }
 
+function parseLink(linkInfo: { link: string; original: string; displayText?: string }): ParsedLink {
+	const linkText = linkInfo.link;
+	const displayText = linkInfo.displayText;
+
+	// Block reference: contains #^
+	if (linkText.includes('#^')) {
+		const parts = linkText.split('#^');
+		return {
+			targetFile: parts[0] || '',
+			linkType: 'block',
+			selector: parts[1] || '',
+			originalLink: linkInfo.original,
+			displayText
+		};
+	}
+
+	// Heading reference: contains #
+	if (linkText.includes('#')) {
+		const parts = linkText.split('#');
+		return {
+			targetFile: parts[0] || '',
+			linkType: 'heading',
+			selector: parts[1] || '',
+			originalLink: linkInfo.original,
+			displayText
+		};
+	}
+
+	// Whole file reference
+	return {
+		targetFile: linkText,
+		linkType: 'file',
+		originalLink: linkInfo.original,
+		displayText
+	};
+}
+
 function visitFolder(
 	settings: Obsidian2BookSettings,
 	fileStr: TAbstractFile,
