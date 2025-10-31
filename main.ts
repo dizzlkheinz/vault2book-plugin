@@ -297,6 +297,35 @@ function extractHeadingSection(content: string, heading: string): string {
 	return lines.slice(startIdx, endIdx).join('\n');
 }
 
+function extractBlock(content: string, blockId: string): string {
+	const lines = content.split('\n');
+
+	// Find line with ^block-id
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		if (!line) continue;
+		if (line.includes(`^${blockId}`)) {
+			// Extract the paragraph (until blank line)
+			let startIdx = i;
+			let endIdx = i + 1;
+
+			// Go back to start of paragraph
+			while (startIdx > 0 && (lines[startIdx - 1]?.trim() || '') !== '') {
+				startIdx--;
+			}
+
+			// Go forward to end of paragraph
+			while (endIdx < lines.length && (lines[endIdx]?.trim() || '') !== '') {
+				endIdx++;
+			}
+
+			return lines.slice(startIdx, endIdx + 1).join('\n');
+		}
+	}
+
+	return '';
+}
+
 function visitFolder(
 	settings: Obsidian2BookSettings,
 	fileStr: TAbstractFile,
