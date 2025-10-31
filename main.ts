@@ -263,6 +263,40 @@ function parseLink(linkInfo: { link: string; original: string; displayText?: str
 	};
 }
 
+function extractHeadingSection(content: string, heading: string): string {
+	const lines = content.split('\n');
+	const headingPattern = new RegExp(`^#{1,6}\\s+${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i');
+
+	let startIdx = -1;
+	let headingLevel = 0;
+
+	// Find heading
+	for (let i = 0; i < lines.length; i++) {
+		if (headingPattern.test(lines[i] || '')) {
+			startIdx = i;
+			const match = lines[i]?.match(/^#+/);
+			headingLevel = match ? match[0].length : 0;
+			break;
+		}
+	}
+
+	if (startIdx === -1) return '';
+
+	// Extract until next same-or-higher level heading
+	let endIdx = lines.length;
+	for (let i = startIdx + 1; i < lines.length; i++) {
+		const line = lines[i];
+		if (!line) continue;
+		const match = line.match(/^(#+)\s/);
+		if (match && match[1].length <= headingLevel) {
+			endIdx = i;
+			break;
+		}
+	}
+
+	return lines.slice(startIdx, endIdx).join('\n');
+}
+
 function visitFolder(
 	settings: Obsidian2BookSettings,
 	fileStr: TAbstractFile,
