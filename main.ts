@@ -528,9 +528,7 @@ async function generateBookFromFile(
 			heading = `Excerpt from ${ref.parsedLink.targetFile}`;
 		}
 
-		book += `## ${ref.id}\n`;
-		book += `### ${heading}\n`;
-		book += `[[#^${ref.id}-return|↩︎]]\n\n`;
+		book += `## ${ref.id} – ${heading} [[#^${ref.id}-return|↩︎]]\n\n`;
 		book += ref.content;
 		book += '\n\n---\n\n';
 	});
