@@ -131,6 +131,21 @@ type fileStruct = {
 	document: TAbstractFile;
 };
 
+interface ParsedLink {
+	originalLink: string;       // "[[auth-file#setup]]"
+	targetFile: string;         // "auth-file"
+	linkType: 'file' | 'heading' | 'block';
+	selector?: string;          // "setup" or "^block-id"
+	displayText?: string;       // custom display text if provided
+}
+
+interface Reference {
+	id: string;              // "ref-1", "ref-2"
+	parsedLink: ParsedLink;
+	content: string;         // Extracted content
+	sourceHeading: string;   // Source file basename for return link
+}
+
 let fileList: fileStruct[] = [];
 
 function isDocFile(file: TAbstractFile): boolean {
