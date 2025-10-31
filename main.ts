@@ -519,16 +519,17 @@ async function generateBookFromFile(
 	// 4. Add all references as endnotes
 	references.forEach(ref => {
 		// Determine heading based on link type
-		let heading;
+		let description;
 		if (ref.parsedLink.linkType === 'file') {
 			// Whole file
-			heading = ref.parsedLink.targetFile;
+			description = ref.parsedLink.targetFile;
 		} else {
 			// Excerpt (heading or block)
-			heading = `Excerpt from ${ref.parsedLink.targetFile}`;
+			description = `Excerpt from ${ref.parsedLink.targetFile}`;
 		}
 
-		book += `## ${ref.id} – ${heading} [[#^${ref.id}-return|↩︎]]\n\n`;
+		book += `## ${ref.id}\n`;
+		book += `**${description}** [[#^${ref.id}-return|↩︎]]\n\n`;
 		book += ref.content;
 		book += '\n\n---\n\n';
 	});
