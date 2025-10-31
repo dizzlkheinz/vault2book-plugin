@@ -134,6 +134,47 @@ export default class Obsidian2BookClass extends Plugin {
 		});
 
 		this.addSettingTab(new Obsidian2BookSettingsPage(this.app, this));
+
+		this.registerEvent(
+			this.app.workspace.on('file-menu', (menu, file) => {
+				if (!(file instanceof TFile)) return;
+
+				menu.addItem((item) => {
+					item
+						.setTitle('Generate book from this file')
+						.setIcon('book')
+						.onClick(async () => {
+							try {
+								const content = await generateBookFromFile(
+									this.app,
+									this.settings,
+									file
+								);
+								const fileName = `${file.basename}_book.md`;
+								const existingFile = this.app.vault.getAbstractFileByPath(fileName);
+
+								if (existingFile != null) {
+									new ConfirmModal(
+										this.app,
+										"Overwrite",
+										`A file named ${fileName} already exists. Do you want to overwrite it?`,
+										async () => {
+											await this.app.vault.modify(existingFile as TFile, content);
+											new Notice(`Book updated: ${fileName}`);
+										},
+										() => {}
+									).open();
+								} else {
+									await this.app.vault.create(fileName, content);
+									new Notice(`Book generated: ${fileName}`);
+								}
+							} catch (e) {
+								new Notice(`Error: ${e instanceof Error ? e.message : String(e)}`);
+							}
+						});
+				});
+			})
+		);
 	}
 
 	onunload() {}
