@@ -402,6 +402,46 @@ async function collectReferences(
 	return references;
 }
 
+async function generateBookFromFile(
+	app: App,
+	settings: Obsidian2BookSettings,
+	sourceFile: TFile
+): Promise<string> {
+	let book = `<!--book-ignore-->\n<!--dont-delete-these-comments-->\n\n`;
+
+	// 1. Collect all references
+	const references = await collectReferences(app, sourceFile, settings);
+
+	// 2. Read source file and replace links with reference markers
+	let sourceContent = await app.vault.read(sourceFile);
+
+	// Replace each original link with reference marker
+	references.forEach((ref) => {
+		const refMarker = ref.parsedLink.displayText
+			? `[[#📎 ${ref.id}|${ref.parsedLink.displayText}]]`
+			: `[[#📎 ${ref.id}]]`;
+		sourceContent = sourceContent.replace(
+			ref.parsedLink.originalLink,
+			refMarker
+		);
+	});
+
+	// 3. Add source file content
+	book += `# ${sourceFile.basename}\n\n`;
+	book += sourceContent;
+	book += '\n\n---\n\n';
+
+	// 4. Add all references as endnotes
+	references.forEach(ref => {
+		book += `## 📎 ${ref.id}\n`;
+		book += `[[#↑ ${ref.sourceHeading}]]\n\n`;
+		book += ref.content;
+		book += '\n\n---\n\n';
+	});
+
+	return book;
+}
+
 function visitFolder(
 	settings: Obsidian2BookSettings,
 	fileStr: TAbstractFile,
