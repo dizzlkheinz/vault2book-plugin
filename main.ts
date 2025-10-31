@@ -107,7 +107,8 @@ export default class Obsidian2BookClass extends Plugin {
 						this.settings,
 						activeFile
 					);
-					const fileName = `${activeFile.basename}_book.md`;
+					const folder = activeFile.parent;
+					const fileName = folder ? `${folder.path}/${activeFile.basename}_book.md` : `${activeFile.basename}_book.md`;
 					const existingFile = this.app.vault.getAbstractFileByPath(fileName);
 
 					if (existingFile != null) {
@@ -150,7 +151,8 @@ export default class Obsidian2BookClass extends Plugin {
 									this.settings,
 									file
 								);
-								const fileName = `${file.basename}_book.md`;
+								const folder = file.parent;
+								const fileName = folder ? `${folder.path}/${file.basename}_book.md` : `${file.basename}_book.md`;
 								const existingFile = this.app.vault.getAbstractFileByPath(fileName);
 
 								if (existingFile != null) {
@@ -498,11 +500,11 @@ async function generateBookFromFile(
 	// 2. Read source file and replace links with reference markers
 	let sourceContent = await app.vault.read(sourceFile);
 
-	// Replace each original link with reference marker
+	// Replace each original link with reference marker and block anchor
 	references.forEach((ref) => {
 		const refMarker = ref.parsedLink.displayText
-			? `[[#📎 ${ref.id}|${ref.parsedLink.displayText}]]`
-			: `[[#📎 ${ref.id}]]`;
+			? `[[#${ref.id}|${ref.parsedLink.displayText}]] ^${ref.id}-return`
+			: `[[#${ref.id}]] ^${ref.id}-return`;
 		sourceContent = sourceContent.replace(
 			ref.parsedLink.originalLink,
 			refMarker
@@ -516,8 +518,19 @@ async function generateBookFromFile(
 
 	// 4. Add all references as endnotes
 	references.forEach(ref => {
-		book += `## 📎 ${ref.id}\n`;
-		book += `[[#↑ ${ref.sourceHeading}]]\n\n`;
+		// Determine heading based on link type
+		let heading;
+		if (ref.parsedLink.linkType === 'file') {
+			// Whole file
+			heading = ref.parsedLink.targetFile;
+		} else {
+			// Excerpt (heading or block)
+			heading = `Excerpt from ${ref.parsedLink.targetFile}`;
+		}
+
+		book += `## ${ref.id}\n`;
+		book += `### ${heading}\n`;
+		book += `[[#^${ref.id}-return|↩︎]]\n\n`;
 		book += ref.content;
 		book += '\n\n---\n\n';
 	});
