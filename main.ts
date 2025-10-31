@@ -288,7 +288,7 @@ function extractHeadingSection(content: string, heading: string): string {
 		const line = lines[i];
 		if (!line) continue;
 		const match = line.match(/^(#+)\s/);
-		if (match && match[1].length <= headingLevel) {
+		if (match && match[1] && match[1].length <= headingLevel) {
 			endIdx = i;
 			break;
 		}
